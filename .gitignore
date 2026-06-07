@@ -1,0 +1,12 @@
+# Project place file
+/XClass.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+ServerPackages/
+Packages/
+
+sourcemap.json
+wally.lock
