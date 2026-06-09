@@ -15,6 +15,16 @@ print([[예상값들:
     102
     true
     Base
+    -----------------------
+    123
+    2
+    2
+    3
+    4
+    XObject: [obj2의 고유번호]
+    asdf
+    101
+    Base
 ]])
 
 print("-------------------")
@@ -51,18 +61,28 @@ print(obj1.Method)
 obj1:Method()
 print(obj1)
 print(obj1 + 1234)
-print(obj1 == 1234)
 print(XClass.type(obj1))
 
--- const ExtendsTest = XClass.new(function(self)
---     XClass.super(Base.new, self, 123)
---     self.Prop3 = 3
--- end, {
---     Prop4 = 4,
--- })
+print("------------------------")
 
--- const obj2 = ExtendsTest.new()
+const ExtendsTest = XClass.new(function(self)
+    XClass.super(Base.new, self, 123)
+    self.Prop3 = 3
+end, {
+    Prop4 = 4,
+}, {
+    Extends = Base
+})
 
+const obj2 = ExtendsTest.new()
 
+print(obj2.Prop1)
+print(obj2.Prop2)
+print(obj2.Prop3)
+print(obj2.Prop4)
+obj2:Method()
+print(obj2)
+print(obj2 + 1234)
+print(XClass.type(obj2))
 
 return nil
