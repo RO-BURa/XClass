@@ -370,96 +370,126 @@ function XObject._metatable:__newindex(index, value)
 end
 
 do
-	const function tostring(self)
-		const prototype = XObject.RawGet(self, "__prototype")
-		
-		if prototype then
-			const toStringMetamethod = XObject.Fetch(prototype, "__tostring")
+	const function findMetamethod(prototype, metamethodName, blackedProxy)
+		const metamethod = XObject.RawGet(prototype, metamethodName)
 
-			if toStringMetamethod ~= nil then
+		if metamethod and (metamethod ~= blackedProxy) then
+			return metamethod
+		end
+		return
+	end
 
-				if type(toStringMetamethod) == "string" then
-					return toStringMetamethod
-				end
+	const function fetchMetamethod(prototype, metamethodName, blackedProxy)
+		local metamethod = XObject.RawGet(prototype, metamethodName)
 
-				-- const typeTag = XObject.RawGet(self, "__type")
+		if (metamethod == nil) or (metamethod == blackedProxy) then
+			metamethod = XObject.PerAncestor(prototype, findMetamethod, metamethodName, blackedProxy)
+		end
 
-				-- if type(typeTag) == "string" then
-				-- 	return typeTag
-				-- end
+		return metamethod
+	end
 
-				if not (toStringMetamethod == tostring) then
-					return toStringMetamethod(self)
+
+	do
+		const function tostringMetamethod(self)
+			const prototype = XObject.RawGet(self, "__prototype")
+			
+			if prototype then
+				const metamethod = fetchMetamethod(prototype, "__tostring", tostringMetamethod)
+
+				if metamethod ~= nil then
+
+					if type(metamethod) == "string" then
+						return metamethod
+					end
+
+					-- const typeTag = XObject.RawGet(self, "__type")
+
+					-- if type(typeTag) == "string" then
+					-- 	return typeTag
+					-- end
+
+					return metamethod(self)
 				end
 			end
-		end
-		
-		return XObject.RawName(self)
-	end
-
-	XObject._metatable.__tostring = tostring
-
-	-- function XObject._metatable:__tostring()
-		
-
-
-	-- 	-- return XObject.GetName(self)
-	-- end
-end
-
-do
-	const function eq(...)
-		const self = ...
-
-		const prototype = XObject.RawGet(self, "__prototype")
-
-		const metamethod = XObject.Fetch(prototype, "__eq")
-
-		if (metamethod == nil) or (metamethod == eq) then
-			return rawequal(...)
+			
+			return XObject.RawName(self)
 		end
 
-		return metamethod(...)
+		XObject._metatable.__tostring = tostringMetamethod
+
+		-- function XObject._metatable:__tostring()
+			
+
+
+		-- 	-- return XObject.GetName(self)
+		-- end
 	end
 
-	XObject._metatable.__eq = eq
-end
-
-do
-	const ANTI_METAMETHODS = {
-		["__index"] = true,
-		["__newindex"] = true,
-		-- __tostring에 경우  `xobject: {고유번호}` 때문에 따로 만들어져있음
-		["__tostring"] = true,
-		-- __eq는 __tostring처럼 없어도 사용할수 있는 메타메소드이기 때문에 따로 제외
-		["__eq"] = true,
-		["__metatable"] = true,
-		["__mode"] = true,
-	}
-
-	const function createMetamethod(metamethodName)
-		const function proxy(...)
+	do
+		const function eq(...)
 			const self = ...
 
 			const prototype = XObject.RawGet(self, "__prototype")
 
-			const metamethod = XObject.Fetch(prototype, metamethodName)
+			const metamethod = fetchMetamethod(prototype, "__eq", eq) --XObject.Fetch(prototype, "__eq")
 
-			if (metamethod == nil) or (metamethod == proxy) then
-				error(`no metamethod "{metamethodName}"`)
+			if (metamethod == nil) or (metamethod == eq) then
+				return rawequal(...)
 			end
 
 			return metamethod(...)
 		end
-		return proxy
+
+		XObject._metatable.__eq = eq
 	end
 
-	for metamethodName in Constants.MetamethodNames do
-		if ANTI_METAMETHODS[metamethodName] then
-			continue
+	do
+		const ANTI_METAMETHODS = {
+			["__index"] = true,
+			["__newindex"] = true,
+			-- __tostring에 경우  `xobject: {고유번호}` 때문에 따로 만들어져있음
+			["__tostring"] = true,
+			-- __eq는 __tostring처럼 없어도 사용할수 있는 메타메소드이기 때문에 따로 제외
+			["__eq"] = true,
+			["__metatable"] = true,
+			["__mode"] = true,
+		}
+
+		const function createMetamethod(metamethodName)
+			const function proxy(...)
+				const self = ...
+
+				const prototype = XObject.RawGet(self, "__prototype")
+
+				-- const metamethod = XObject.Fetch(prototype, metamethodName)
+
+				-- if (metamethod == nil) or (metamethod == proxy) then
+				-- 	error(`no metamethod "{metamethodName}"`)
+				-- end
+
+				const metamethod = fetchMetamethod(prototype, metamethodName, proxy)
+
+				if metamethod then
+					return metamethod(...)
+				else
+					error(`no metamethod "{metamethodName}"`)
+				end
+
+			end
+
+			return proxy
 		end
 
-		XObject._metatable[metamethodName] = createMetamethod(metamethodName)
+
+
+		for metamethodName in Constants.MetamethodNames do
+			if ANTI_METAMETHODS[metamethodName] then
+				continue
+			end
+
+			XObject._metatable[metamethodName] = createMetamethod(metamethodName)
+		end
 	end
 end
 

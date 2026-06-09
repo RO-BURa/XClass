@@ -2,14 +2,14 @@
 name = "ro-bura/xclass"
 description = "just class framework"
 
-version = "0.1.0"
+version = "0.1.2"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 
 authors = ["RO_BURa"]
 license = "MIT"
 
-include = ["src/", "src/**", "Packages", "Packages/**", "bin", "bin/**", "default.project.json", "place.project.json", "wally.toml", "selene.toml"]
+include = ["src", "src/**", "bin", "bin/**", "LICENSE", "default.project.json", "place.project.json", "wally.toml", "selene.toml"]
 exclude = ["**"]
 
 [dependencies]

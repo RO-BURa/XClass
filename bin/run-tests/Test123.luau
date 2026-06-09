@@ -4,61 +4,65 @@ local XClass = require(ReplicatedStorage.Packages.XClass)
 
 print("테스트 시작")
 
-local n = 0
+print([[예상값들:
+    ARGS: 1234 -- print("ARGS:", a1)
+    1 -- obj1.Prop1
+    2 -- obj1.Prop2
+    function: [obj1.Method의 고유번호] -- obj1.Method
+    XObject: [obj1의 고유번호] -- obj1:Method() >> print(XClass.rawName(self))
+    asdf
+    101
+    102
+    true
+    Base
+]])
+
+print("-------------------")
+
 local count = 0
 
-const TestClass1 = XClass.new(function(self, name)
+local function constructor(self, a1)
+    print("ARGS:", a1)
     count += 1
-    self.Name = name
-    self.Id = count
-end, {
-    Bob = XClass.nilProxy,
-    Asdf = 0,
-    Getter = XClass.getter(function(self, originalIndex)
-        print("GETTER :", originalIndex)
-        n += 1
-        return n
-    end),
-    __get = function(self, index, onValue, isEmpty, originalIndex)
-        -- 여기서 self 출력하면 __tostring으로 가고 거기서 self.Id에서 __get으로 다시 오고 무한 재귀됨
-        print("LOG:", index, onValue, isEmpty, originalIndex)
+    self.Prop1 = count
+end
 
-        if onValue == 3 then
-            -- 30으로 값 스틸 하기
-            return 30
-        end
-        return
+const Base = XClass.new(constructor, {
+    Prop2 = 2,
+    Method = function(self)
+        print(XClass.rawName(self))
     end,
-    __tostring = function(self)
-        return "테스트123" .. self.Id
+    __add = function()
+        return 101
     end,
+    __eq = function()
+        return 102
+    end,
+    __tostring = "asdf"
 }, {
-    Type = "TestClass1",
+    Type = "Base"
 })
 
-const testObj = TestClass1.new()
+const obj1 = Base.new(1234)
 
-print(testObj, testObj.Name, testObj.Asdf)
-for i = 1, 4 do
-    print(testObj.GetTer)
-end
+print(obj1.Prop1)
+print(obj1.Prop2)
+print(obj1.Method)
+obj1:Method()
+print(obj1)
+print(obj1 + 1234)
+print(obj1 == 1234)
+print(XClass.type(obj1))
 
-print(testObj.dfdsfdssdf)
-print(testObj.Bob)
+-- const ExtendsTest = XClass.new(function(self)
+--     XClass.super(Base.new, self, 123)
+--     self.Prop3 = 3
+-- end, {
+--     Prop4 = 4,
+-- })
 
-const TestClass2 = XClass.new(function(self ,...)
-    XClass.super(TestClass1.new, self, ...)
-end, nil, {
-    Extends = TestClass1,
-})
+-- const obj2 = ExtendsTest.new()
 
-const testObj2 = TestClass2.new()
-for i = 1, 4 do
-    print(testObj2.GetTer)
-end
-
-print(testObj2.dfdsfdssdf)
-print(testObj2.Bob)
 
 
 return nil
