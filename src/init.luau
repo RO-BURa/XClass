@@ -43,7 +43,7 @@ do
                 const prototype = XObject.RawGet(value, "__prototype")
                 
                 if prototype then
-                    const typeTag = XObject.RawGet(prototype, "__type")
+                    const typeTag = XObject.Fetch(prototype, "__type")
 
                     if type(typeTag) == "string" then
                         return typeTag
