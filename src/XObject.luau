@@ -434,11 +434,11 @@ do
 
 			const metamethod = fetchMetamethod(prototype, "__eq", eq) --XObject.Fetch(prototype, "__eq")
 
-			if (metamethod == nil) or (metamethod == eq) then
+			if metamethod == nil then
 				return rawequal(...)
+			else
+				return metamethod(...)
 			end
-
-			return metamethod(...)
 		end
 
 		XObject._metatable.__eq = eq
@@ -480,8 +480,6 @@ do
 
 			return proxy
 		end
-
-
 
 		for metamethodName in Constants.MetamethodNames do
 			if ANTI_METAMETHODS[metamethodName] then
