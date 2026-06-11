@@ -330,11 +330,14 @@ function XObject._metatable:__newindex(index, value)
 
 	index = XObjectUtils.FixIndex(index, prototype)
 
-	if (internal[index] == nil) and prototype then
-		const canSetter = XObject.Fetch(prototype, index)
+	const oldValue = internal[index]
+	local fetched
 
-		if Utils.HasTag(canSetter, "Setter") then
-			canSetter(index, value)
+	if (oldValue == nil) and prototype then
+		fetched = XObject.Fetch(prototype, index)
+
+		if Utils.HasTag(fetched, "Setter") then
+			fetched(index, value)
 			return
 		end
 	end
@@ -355,18 +358,36 @@ function XObject._metatable:__newindex(index, value)
 	XObject.PerAncestor(prototype, runSet)
 
 	
-	internal[index] = Utils.ToSave(value)
+	const stagedValue = Utils.ToSave(value)
 
-	local function runAfterSet(prototype)
-		const afterset = XObject.RawGet(prototype, "__afterset")
+	-- 값이 같기 때문에 값이 씌워지지 않아야함 (__afterset도 실행되면 안됨)
+	-- 생각해보니 oldValue가 Fetch한 값으로 변경 해야할지 고민
 
-		if afterset then
-			afterset(self, index, value)
+	-- 일단 값은 씌우고
+	-- oldValue가 nil이고 Fetch한 값이 있는경우 과거 fetch 값과 현재 값이 같다면 __afterset을 실행하지 않게 함.
+
+
+	internal[index] = stagedValue
+
+	if prototype then
+		if (oldValue == nil) and fetched then
+			if fetched == stagedValue then
+				return
+			end
 		end
+
+		const function runAfterSet(prototype)
+			const afterset = XObject.RawGet(prototype, "__afterset")
+
+			if afterset then
+				afterset(self, index, value)
+			end
+		end
+
+		runAfterSet(prototype)
+		XObject.PerAncestor(prototype, runAfterSet)
 	end
 
-	runAfterSet(prototype)
-	XObject.PerAncestor(prototype, runAfterSet)
 end
 
 do
