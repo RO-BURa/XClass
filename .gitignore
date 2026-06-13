@@ -5,8 +5,14 @@
 /*.rbxlx.lock
 /*.rbxl.lock
 
-ServerPackages/
 Packages/
 
 sourcemap.json
 wally.lock
+pesde.lock
+
+roblox_packages
+lune_packages
+luau_packages
+.pesde
+
