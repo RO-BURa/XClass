@@ -112,3 +112,7 @@ Luau의 __eq 메타메소드의 작동방식의 경우 두가지의 개체를 �
 추가로 여러가지 부가 기능이 있지만 느낌대로 쓰세요.
 
 정 모르겠으면 소스코드 보고 분석하던가 저에게 질문하세요.
+
+pesde에 publish를 시도중인데 코드에 const를 사용 할 때 export 할 type을 가져오지 못하는 버그가 존재하여 pesde에서 고칠 때 까지 publish 하지 않겠습니다.
+
+https://github.com/pesde-pkg/pesde/issues/71
