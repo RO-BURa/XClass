@@ -1,0 +1,32 @@
+name = "ro_bura/xclass"
+version = "0.1.3"
+description = "just class framework"
+authors = ["RO_BURa"]
+license = "MIT"
+includes = ["src", "bin", "LICENSE", "selene.toml", "pesde.toml", "README.md"]
+
+[target]
+environment = "roblox" 
+lib = "src/init.luau"
+build_files = ["default.project.json"]
+
+[indices]
+default = "https://github.com/pesde-pkg/index"
+
+[wally_indices]
+default = "https://github.com/UpliftGames/wally-index"
+
+[dependencies]
+TuplePacker = { wally = "ro-bura/tuplepacker", version = "^0.1.2" }
+
+[scripts]
+roblox_sync_config_generator = ".pesde/scripts/roblox_sync_config_generator.luau"
+sourcemap_generator = ".pesde/scripts/sourcemap_generator.luau"
+
+[dev_dependencies]
+scripts = { name = "pesde/scripts_rojo", version = "^0.2.0", target = "lune" }
+rojo = { name = "pesde/rojo", version = "^7.5.1", target = "lune" }
+
+[engines]
+pesde = "^0.7.0"
+lune = "^0.10.2"
