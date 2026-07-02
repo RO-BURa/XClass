@@ -116,3 +116,18 @@ Luau의 __eq 메타메소드의 작동방식의 경우 두가지의 개체를 �
 pesde에 publish를 시도중인데 코드에 const를 사용 할 때 export 할 type을 가져오지 못하는 버그가 존재하여 pesde에서 고칠 때 까지 publish 하지 않겠습니다.
 
 https://github.com/pesde-pkg/pesde/issues/71
+
+
+그리고 어차피 클래스 생성 후에 메소드나 값 추가 안되니깐 Fetch로 Extends에서 순서대로 올라가며 찾는게 아니라 미리 Navigation 하나 만들어서 값을 부모로 부터 미리 정리 해두는 방식으로 변경하려 합니다.
+
+이기능 다만들고 버그가 대충 없으면 1.0.0으로 wally에 publish 할 예정입니다.
+
+실사용 테스트도 꽤 해봤는데 확실히 클래스 만들때 더 편한거 같긴 합니다.
+
+타입 기능도 한번 지원 해볼까? 생각은 있습니다. (Type Function 좀 이용해서 딱)
+
+Luau 타입에 typeof({})를 Type Function에서 사용 할 수 있는 방법이 없어서 고민이긴합니다
+
+그 실사용 하면서 느낀건데 XClass를 XObject로 만들었으면 안됬음. 그냥 테이블로 했어야했음.
+
+이 두가지 수정해서 만들 예정
