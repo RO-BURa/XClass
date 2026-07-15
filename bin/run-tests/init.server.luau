@@ -1,1 +1,1 @@
-require(script.Test123)
+require(script.RealTest)

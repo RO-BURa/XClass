@@ -2,38 +2,41 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RobloxStyleObject = require(script.Parent.RobloxStyleObject)
 local XClass = require(ReplicatedStorage.Packages.XClass)
 
-
 const PlayerData = XClass.new(function(self)
-    XClass.super(RobloxStyleObject.new, self, "PlayerData")
+	XClass.Super(self, RobloxStyleObject.new, "PlayerData")
 
-    self:GetPropertyChangedSignal("Money"):FirstConnect(function()
-        print("MoneyChanged", self.Money)
-        if self.Money > 50 then
-            self.Poor = false
-        else
-            self.Poor = true
-        end
-    end)
+	self:GetPropertyChangedSignal("Money"):FirstConnect(function()
+		print("MoneyChanged", self.Money)
+		if self.Money > 50 then
+			self.Poor = false
+		else
+			self.Poor = true
+		end
+	end)
 end, {
-    Work = function(self)
-        self.Money += 10
-    end,
-    Money = 0,
-    Poor = true,
+	Work = function(self)
+		self.Money += 10
+	end,
+	Money = 0,
+	Poor = true,
 }, {
-    Extends = RobloxStyleObject,
+	Extends = RobloxStyleObject,
 })
 
 const asdf = PlayerData.new()
 
-print(asdf.Money)
+print("asdf.Money", asdf.Money)
 
+print("asdf:Work()")
 asdf:Work()
 
-print(asdf.Poor)
+print("asdf.Money", asdf.Money)
 
+print("asdf.Poor", asdf.Poor)
+
+print("asdf.Money = 100")
 asdf.Money = 100
 
-print(asdf.Poor)
+print("asdf.Poor", asdf.Poor)
 
 return nil
