@@ -1,205 +1,450 @@
---const rawget, rawset, type, pairs, ipairs, setmetatable = rawget, rawlen, type, pairs, ipairs, setmetatable
+--!optimize 2
 
 const Constants = require("./Constants")
 const Utils = require("./Utils")
+const DefaultConfigurations = require("./DefaultConfigurations")
 const XObject = require("./XObject")
-const XObjectUtils = require("./XObjectUtils")
 
 const XClass = {}
 
--- const defaultConfigurations = {
-
--- }
-
-const prototype = XObject.new()
-const prototypeInternal = XObject.GetInternal(prototype, true)
-
-const SPECIAL_CONSTURCTOR_INDEXES = {
-    ["__first"] = true,
-    ["__final"] = true,
-}
-
-prototypeInternal.__type = "XClass"
-
--- { [XClass]: Prototype }
 const prototypeByXClass = Utils.GetWeakKeyTable()
-const initializerByFactory = Utils.GetWeakKeyTable()
+const prototypes = Utils.GetWeakKeyTable()
 
---[[
-super() 기능도 만들어야하기 때문에 어케 만들건지 어제 자면서 생각을 해봤음
-XClass.super(상위클래스.new (원하는 아무 생성자), ... (매개변수들 self도 포함 (일반적으로 첫번째 매개변수가 self)))로 super()
-]]
+const function fixIndex(index, prototype, numberKeysToString, ignoreCase)
+	if prototype then
+		numberKeysToString = prototype.__numberkeystostring
+		ignoreCase = prototype.__ignorecase
+	end
+	if numberKeysToString == nil then
+		numberKeysToString = DefaultConfigurations.NumberKeysToString
+	end
+	if ignoreCase == nil then
+		ignoreCase = DefaultConfigurations.IgnoreCase
+	end
 
-do    
-    -- 근데 constructor에 Vector3.zero같은 값은 어케넣지;
-    -- 아 몰라 걍 freeze안하고 플레이어가 알아서 하게하면됨 (와 아인슈타인 주니어냐)
+	if numberKeysToString then
+		if type(index) == "number" then
+			index = tostring(index)
+		end
+	end
 
-    local createProxyFunctionFromConstructor
-    do
-        const isDuplicate = Utils.GetWeakKeyTable()
-        
-        function createProxyFunctionFromConstructor(constructor, selfInternal, classPrototype)
+	if ignoreCase then
+		if type(index) == "string" then
+			index = string.lower(index)
+		end
+	end
 
-            const duplicated = isDuplicate[constructor]
+	return index
+end
 
-            if duplicated then
-                return duplicated
-            end
+const base = {}
 
-            -- proxyA는 super에 써야해서 따로 만들고 나중에 따로 딕셔너리에 저장할거라 따로 만든거
-            const function initializer(...)
-                const first = selfInternal.__first
+function XClass:IsA(typeTag)
+	const internal = XObject.GetInternal(self, true)
 
-                if first then
-                    first(...)
-                end
+	if internal then
+		const prototype = internal.__prototype
 
-                constructor(...)
+		if prototype then
+			const objectType = prototype.__type
 
-                const final = selfInternal.__final
-                
-                if final then
-                    final(...)
-                end
-            end
+			if objectType then
+				return objectType == typeTag
+			end
+		end
+	end
 
-            const function factory(...)
-                const xobject = XObject.new(classPrototype)
+	return false
+end
 
-                initializer(xobject, ...)
+function XClass:IsFrom(ancestor)
+	const prototype = XObject.RawGet(self, "__prototype")
 
-                return xobject
-            end
+	const ancestors = prototype.__ancestors
 
-            isDuplicate[constructor] = factory
-            initializerByFactory[factory] = initializer
+	if XClass.IsXClass(ancestor) then
+		ancestor = prototypeByXClass[ancestor]
+	end
 
-            return factory
-        end
-    end
+	if not ancestor then
+		return false
+	end
 
-    function XClass.new(constructors, properties, configurations)
-        --[[
-        constructor엔 생성하기위한 템플릿 테이블 또는 함수 (함수의 경우 { new = 함수 }로 변환)이 들어옴
+	if ancestor == prototype then
+		return true
+	end
 
-        constructors가 테이블이고 특수한 값으로 __first와 __final이 있을때 다음과 같이 작동함
-        먼저, 어느 생성자든간 __first와 __final이 (있는 경우에) 같이 작동함
-        __first는 생성될때 가장 먼저 실행하고
-        __final은 생성후 전달 직전 가장 마지막으로 실행됨
-   
+	if ancestors then
+		if ancestors[ancestor] then
+			return true
+		end
+	end
 
+	return false
+end
 
-        properties엔 기본값, 메소드가 들어옴
-        properties에 넣을수있는 특수한 값들:
-        {
-            (__index, __newindex, __metatable, __mode)를 제외한 메타메소드들,
-            __get, -- get 직전을 감지하는 함수를 넣을 수 있음
-            __set, -- set 직전을 감지하는 함수를 넣을 수 있음 (setter에 의해 실행 안됨)
-            __afterset, -- 값 설정 이후를 감지하는 함수를 넣을 수 있음
-        }
+-- XObject의 __extends에 대해서 반복
+const function perParent<A..., R...>(self, callback: (parentPrototype: any, A...) -> R..., ...: A...): ...any
+	local extends = self.__extends
+	if not extends then
+		return nil
+	end
 
-        configurations엔 클래스의 설정이 들어옴
+	if not prototypes[extends] and (type(extends) == "table") then
+		if #extends == 1 then
+			extends = extends[1]
+		else
+			for _, parent in ipairs(extends) do
+				const returns = table.pack(callback(parent, ...))
 
-        configurations에 들어올수 있는값
+				const returnsN = returns.n
 
-        {
-            Extends: XClass | { XClass } | nil, -- 프로토타입의 __extends라는 속성을 수정해야함
-            Type: string?, -- 그냥 프로토타입의 __type에 기록만 해두면됨
-            NumberKeysToString: boolean?,
-            IgnoreCase: boolean?,
-        }?
-        ]]
+				if returnsN > 0 then
+					return table.unpack(returns, 1, returnsN)
+				end
+			end
+			return
+		end
+	end
 
-        if configurations == nil then
-            configurations = Constants.EmptyTable
-        end
+	return callback(extends, ...)
+end
 
-        const extends = rawget(configurations, "Extends")
-        const typeTag = rawget(configurations, "Type")
-        const numberKeysToString = rawget(configurations, "NumberKeysToString")
-        const ignoreCase = rawget(configurations, "IgnoreCase")
+const constructorByFactory = Utils.GetWeakKeyTable()
 
-        const newProperties = {}
+-- 따로 만든이유: 그 타입 테스트 하느라
+type CreateFactoryFunction = <T, A...>(
+	prototype: any,
+	constructor: (typeof({}), A...) -> ...any,
+	first: (typeof({}), A...) -> ()?,
+	final: (typeof({}), A...) -> ()
+) -> (A...) -> T
 
-        if properties then
-            for index, value in pairs(properties) do
-                index = XObjectUtils.FixIndex(index, nil, numberKeysToString, ignoreCase)
-                
-                if newProperties[index] then
-                    error(`duplicate index found "{index}"`)
-                end
+const createFactory = function(prototype, constructor, first, final)
+	const function factory(...)
+		const self = XObject.new(prototype)
+		const internal = XObject.GetInternal(self)
 
-                newProperties[index] = Utils.ToSave(value)
+		for index, value in base do
+			internal[index] = value
+		end
 
-            end
-        end
-        
-        -- 2번째 매개변수는 as라고 newproxy()에서 얻을수있는 userdata 대신 사용함
-        -- self값 수정은 rawset으로
-        const internal = {}
-        const self = XObject.new(prototype, setmetatable({}, internal))
+		for metamethodName in Constants.MetamethodNames do
+			if Utils.IsInBlacklist(metamethodName) then
+				continue
+			end
 
-        const classPrototype = XObject.new()
+			const value = prototype[metamethodName]
 
-        if type(constructors) == "function" then
-            rawset(self, "new", createProxyFunctionFromConstructor(constructors, internal, classPrototype))
-        else
-            for index, constructor in pairs(constructors) do
-                if type(constructor) ~= "function" then
-                    error(`"{index}" constructor is not function`)
-                end
-                if SPECIAL_CONSTURCTOR_INDEXES[index] then
-                    --internal[index] = createProxyFunctionFromConstructor(constructor, internal, classPrototype)
-                    internal[index] = constructor
-                else
-                    rawset(self, index, createProxyFunctionFromConstructor(constructor, internal, classPrototype))
-                end
-            end
-        end
+			if value ~= nil then
+				internal[metamethodName] = value
+			end
+		end
 
-        -- Class에서 생성된 개체가 사용하는 프로토타입 오브젝트
-  
-        prototypeByXClass[self] = classPrototype
-        const classPrototypeInternal = XObject.GetInternal(classPrototype)
-        --const selfPrototypeInternal = XObject.GetInternal(internal.Prototype)
+		if first ~= nil then
+			first(self, ...)
+		end
 
-        for index, value in newProperties do
-            classPrototypeInternal[index] = value
-        end
+		constructor(self, ...)
 
-        if extends then
-            if XClass.IsXClass(extends) then
-                classPrototypeInternal.__extends = prototypeByXClass[extends]
-            else
-                if Utils.IsArray(extends) then
-                    const newExtends = {}
+		if final ~= nil then
+			final(self, ...)
+		end
 
-                    for index, extendsTo in ipairs(extends) do
-                        if not (XClass.IsXClass(extendsTo)) then
-                            error(`{extendsTo} is not XClass`)
-                        end
+		return self
+	end
 
-                        newExtends[index] = prototypeByXClass[extendsTo]
-                    end
-                    classPrototypeInternal.__extends = newExtends
-                end
-            end
-        end
-        classPrototypeInternal.__type = typeTag
-        classPrototypeInternal.__numberkeystostring = numberKeysToString
-        classPrototypeInternal.__ignorecase = ignoreCase
+	constructorByFactory[factory] = constructor
 
-        return self
+	return factory
+end :: CreateFactoryFunction
 
-    end
+function XClass:Super(factory, ...)
+	if type(factory) == "table" then
+		factory = rawget(factory, "new")
+	end
+
+	if type(factory) ~= "function" then
+		error("tried call not function")
+	end
+
+	const constructor = constructorByFactory[factory]
+
+	constructor(self, ...)
 end
 
 function XClass:IsXClass()
-    return if prototypeByXClass[self] then true else false
+	return if prototypeByXClass[self] then true else false
 end
 
-function XClass.GetInitializer(factory)
-    return initializerByFactory[factory]
+local bringNexts
+do
+	const function insertItemsOnNextsByPrototype(parentPrototype, nexts, nextsName)
+		const nextsOfParentPrototype = parentPrototype[nextsName]
+
+		if nextsOfParentPrototype then
+			for _, itemOfParentPrototype in nextsOfParentPrototype do
+				table.insert(nexts, itemOfParentPrototype)
+			end
+		end
+	end
+
+	function bringNexts(prototype, nextsName, with)
+		const nexts = {}
+		perParent(prototype, insertItemsOnNextsByPrototype, nexts, nextsName)
+
+		if with then
+			table.insert(nexts, with)
+		end
+
+		prototype[nextsName] = nexts
+	end
 end
+
+do
+	const function fillBlankValuesFromAnotherPrototype(anotherPrototype, prototype)
+		for index, value in anotherPrototype do
+			if Utils.IsInBlacklist(index) then
+				continue
+			end
+
+			if prototype[index] == nil then
+				prototype[index] = value
+			end
+		end
+	end
+
+	function XClass.new(
+		constructors: (typeof({}), ...any) -> ...any | { [any]: (typeof({}), ...any) -> ...any } | nil,
+		properties: { [any]: any }?,
+		configurations: { [string]: any }?
+	)
+		if configurations == nil then
+			configurations = Constants.EmptyTable
+		end
+
+		const extends = rawget(configurations, "Extends")
+		const typeTag = rawget(configurations, "Type")
+
+		const numberKeysToString = rawget(configurations, "NumberKeysToString")
+		const ignoreCase = rawget(configurations, "IgnoreCase")
+
+		const newProperties = {}
+
+		if properties then
+			for index, value in pairs(properties) do
+				index = fixIndex(index, nil, numberKeysToString, ignoreCase)
+
+				if newProperties[index] ~= nil then
+					error(`duplicate index found "{index}"`)
+				end
+
+				newProperties[index] = Utils.ToSave(value)
+			end
+		end
+
+		const self = {}
+
+		const prototype = {}
+
+		prototypeByXClass[self] = prototype
+		prototypes[prototype] = true
+
+		const newExtends = {}
+
+		const function perExtendsElement(element)
+			-- element는 XClass일것
+			const prototype = prototypeByXClass[element]
+
+			if prototype then
+				table.insert(newExtends, prototype)
+			end
+		end
+
+		if extends then
+			if type(extends) == "table" and (not XClass.IsXClass(extends)) then
+				if #extends == 1 then
+					perExtendsElement(extends[1])
+				else
+					for _, element in ipairs(extends) do
+						perExtendsElement(element)
+					end
+				end
+			else
+				perExtendsElement(extends)
+			end
+		end
+
+		if #newExtends ~= 0 then
+			prototype.__extends = newExtends
+		end
+
+		prototype.__type = typeTag
+
+		prototype.__numberkeystostring = numberKeysToString
+		prototype.__ignorecase = ignoreCase
+
+		for index, value in newProperties do
+			prototype[index] = value
+		end
+
+		if type(constructors) == "function" then
+			self.new = createFactory(prototype, constructors)
+		elseif type(constructors) == "table" then
+			const first = rawget(constructors, "__first")
+			rawset(constructors, "__first", nil)
+			const final = rawget(constructors, "__final")
+			rawset(constructors, "__final", nil)
+			for index, value in pairs(constructors) do
+				self[index] = if type(value) == "function" then createFactory(prototype, value, first, final) else value
+			end
+		else
+			self.new = createFactory(prototype, Utils.DoNothing)
+		end
+
+		bringNexts(prototype, "__nextgets", newProperties.__get)
+		bringNexts(prototype, "__nextsets", newProperties.__set)
+		bringNexts(prototype, "__nextaftersets", newProperties.__afterset)
+
+		perParent(prototype, fillBlankValuesFromAnotherPrototype, prototype)
+
+		const ancestors = {}
+
+		-- 함수 재활용 개귀찮으면 개추 optimize 2라서 ㄱㅊ긴함 이게 더 빠른가? ㅁㄹ 일단 나중에 연구해보고
+		perParent(prototype, function(parentPrototype)
+			ancestors[parentPrototype] = true
+
+			const parentAncestors = parentPrototype.__ancestors
+			if parentAncestors then
+				for parentAncestor in parentAncestors do
+					ancestors[parentAncestor] = true
+				end
+			end
+		end)
+
+		if next(ancestors) then
+			prototype.__ancestors = ancestors
+		end
+
+		return self
+	end
+end
+
+do
+	function base:__index(index)
+		const internal = XObject.GetInternal(self, true)
+		const prototype = internal.__prototype
+
+		const originalIndex = index
+		index = fixIndex(index, prototype)
+
+		Utils.CheckBlacklist(index)
+
+		local value = internal[index]
+
+		if prototype then
+			-- getter
+			if value == nil then
+				const valueOfPrototype = prototype[index]
+
+				if XObject.IsXObject(valueOfPrototype) and XClass.IsA(valueOfPrototype, "Descriptor") then
+					const getter = valueOfPrototype[Constants.Getter]
+
+					if getter then
+						value = Utils.ToSave(getter(self, originalIndex))
+					end
+				else
+					value = valueOfPrototype
+				end
+			end
+
+			const function perGetFunction(getFunction)
+				const returns = table.pack(getFunction(self, index, Utils.ToUse(value), value == nil, originalIndex))
+
+				if returns.n > 0 then
+					value = Utils.ToSave(returns[1])
+				end
+			end
+
+			const nextGetFunctions = prototype.__nextgets
+
+			if nextGetFunctions then
+				for _, getFunction in nextGetFunctions do
+					perGetFunction(getFunction)
+				end
+			end
+		end
+
+		return Utils.ToUse(value)
+	end
+end
+
+do
+	function base:__newindex(index, value)
+		const internal = XObject.GetInternal(self, true)
+		const prototype = internal.__prototype
+
+		if not prototype then
+			error(`no prototype for "__newindex"`)
+		end
+
+		const originalIndex = index
+		index = fixIndex(index, prototype)
+
+		Utils.CheckBlacklist(index)
+
+		const lastValue = internal[index]
+
+		-- setter
+		if lastValue == nil then
+			const valueOfPrototype = prototype[index]
+
+			if XObject.IsXObject(valueOfPrototype) and XClass.IsA(valueOfPrototype, "Descriptor") then
+				const setter = valueOfPrototype[Constants.Setter]
+
+				if setter then
+					setter(self, value, originalIndex)
+					return
+				end
+			end
+		end
+
+		const function perSetFunction(setFunction)
+			const returns = table.pack(setFunction(self, index, Utils.ToUse(value), value == nil, originalIndex))
+
+			if returns.n > 0 then
+				value = Utils.ToSave(returns[1])
+			end
+		end
+
+		const nextSetFunctions = prototype.__nextsets
+
+		if nextSetFunctions then
+			for _, setFunction in nextSetFunctions do
+				perSetFunction(setFunction)
+			end
+		end
+
+		internal[index] = value
+
+		const valueForAfterSet = Utils.ToUse(value)
+
+		const function perAfterSet(afterSet)
+			afterSet(self, index, valueForAfterSet, value == nil, originalIndex)
+		end
+
+		const nextAfterSets = prototype.__nextaftersets
+
+		if nextAfterSets then
+			for _, afterSet in nextAfterSets do
+				perAfterSet(afterSet)
+			end
+		end
+
+		internal[index] = value
+	end
+end
+
+base.__tostring = XObject.RawName
 
 return XClass
