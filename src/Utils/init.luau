@@ -4,9 +4,9 @@ const Constants = require("./Constants")
 
 const Utils = {}
 
-function Utils.Fill(a, b)
-	return if a == nil then b else a
-end
+-- function Utils.Fill(a, b)
+-- 	return if a == nil then b else a
+-- end
 
 do
 	const weakKeyMetatable: { read __mode: "k" } = table.freeze({ __mode = "k" :: "k" })
@@ -26,11 +26,11 @@ end
 -- 	return string.match(id, "0x%x+")
 -- end
 
-function Utils.CreateProxyFunction(func)
-	return function(...)
-		return func(...)
-	end
-end
+-- function Utils.CreateProxyFunction(func)
+-- 	return function(...)
+-- 		return func(...)
+-- 	end
+-- end
 
 -- value가 Array인지 검사하는함수
 function Utils.IsArray(value): boolean
@@ -43,6 +43,10 @@ function Utils.IsArray(value): boolean
 
 	const nextKey = next(value, len)
 	return if nextKey == nil then true else false
+end
+
+function Utils.IsInBlacklist(index)
+	return if Constants.ObjectBlacklistIndex[index] then true else false
 end
 
 function Utils.CheckBlacklist(index)
@@ -83,5 +87,7 @@ do
 		return if tags and tags[Utils.ToSave(tag)] then true else false
 	end
 end
+
+function Utils.DoNothing() end
 
 return Utils
