@@ -131,3 +131,5 @@ Luau 타입에 typeof({})를 Type Function에서 사용 할 수 있는 방법이
 그 실사용 하면서 느낀건데 XClass를 XObject로 만들었으면 안됬음. 그냥 테이블로 했어야했음.
 
 이 두가지 수정해서 만들 예정
+
+추가로 과거에 table.pack을 몰랐어서 TuplePacker을 만들었었음 그래서 안쓸예정
