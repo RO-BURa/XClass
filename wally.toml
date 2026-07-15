@@ -2,7 +2,7 @@
 name = "ro-bura/xclass"
 description = "just class framework"
 
-version = "0.1.2"
+version = "0.1.3"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 
@@ -13,4 +13,3 @@ include = ["src", "src/**", "bin", "bin/**", "LICENSE", "default.project.json", 
 exclude = ["**"]
 
 [dependencies]
-TuplePacker = "ro-bura/tuplepacker@0.1.2"
