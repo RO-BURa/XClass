@@ -425,6 +425,10 @@ do
 			end
 		end
 
+		if lastValue == value then
+			return
+		end
+
 		internal[index] = value
 
 		const valueForAfterSet = Utils.ToUse(value)
@@ -440,8 +444,6 @@ do
 				perAfterSet(afterSet)
 			end
 		end
-
-		internal[index] = value
 	end
 end
 
