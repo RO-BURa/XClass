@@ -53,5 +53,13 @@ Public.IsFrom = XClass.IsFrom :: <T, U>(xobject: T, ancestor: U) -> boolean
 
 Public.NilProxy = Constants.NilProxy :: any
 
+Public.RawGet = XObject.RawGet :: <T, U>(xobject: T, index: U) -> index<T, U>
+
+function Public.RawSet<T, U, V>(xobject: T & { [U]: V }, index: U, value: V)
+	const internal = XObject.GetInternal(xobject, true)
+
+	internal[index] = value
+end
+
 table.freeze(Public)
 return Public
