@@ -58,8 +58,11 @@ function XClass:IsA(typeTag)
 end
 
 function XClass:IsFrom(ancestor)
-	const prototype = XObject.RawGet(self, "__prototype")
+	if not XObject.IsXObject(self) then
+		return false
+	end
 
+	const prototype = XObject.RawGet(self, "__prototype")
 	const ancestors = prototype.__ancestors
 
 	if XClass.IsXClass(ancestor) then
@@ -121,6 +124,17 @@ type CreateFactoryFunction = <T, A...>(
 ) -> (A...) -> T
 
 const createFactory = function(prototype, constructor, first, final)
+	const constructedObjects = Utils.GetWeakKeyTable()
+
+	const function guardedConstructor(self, ...)
+		if constructedObjects[self] then
+			return
+		end
+		constructedObjects[self] = true -- constructor 호출 "전"에 기록
+
+		return constructor(self, ...)
+	end
+
 	const function factory(...)
 		const self = XObject.new(prototype)
 		const internal = XObject.GetInternal(self)
@@ -145,7 +159,7 @@ const createFactory = function(prototype, constructor, first, final)
 			first(self, ...)
 		end
 
-		constructor(self, ...)
+		guardedConstructor(self, ...)
 
 		if final ~= nil then
 			final(self, ...)
@@ -154,7 +168,7 @@ const createFactory = function(prototype, constructor, first, final)
 		return self
 	end
 
-	constructorByFactory[factory] = constructor
+	constructorByFactory[factory] = guardedConstructor
 
 	return factory
 end :: CreateFactoryFunction
@@ -170,6 +184,10 @@ function XClass:Super(factory, ...)
 
 	const constructor = constructorByFactory[factory]
 
+	if not constructor then
+		error("no constructor")
+	end
+
 	constructor(self, ...)
 end
 
@@ -179,21 +197,26 @@ end
 
 local bringNexts
 do
-	const function insertItemsOnNextsByPrototype(parentPrototype, nexts, nextsName)
+	const function insertItemsOnNextsByPrototype(parentPrototype, nexts, inserted, nextsName)
 		const nextsOfParentPrototype = parentPrototype[nextsName]
 
 		if nextsOfParentPrototype then
 			for _, itemOfParentPrototype in nextsOfParentPrototype do
-				table.insert(nexts, itemOfParentPrototype)
+				if not inserted[itemOfParentPrototype] then
+					inserted[itemOfParentPrototype] = true
+					table.insert(nexts, itemOfParentPrototype)
+				end
 			end
 		end
 	end
 
 	function bringNexts(prototype, nextsName, with)
 		const nexts = {}
-		perParent(prototype, insertItemsOnNextsByPrototype, nexts, nextsName)
+		const inserted = {}
 
-		if with then
+		perParent(prototype, insertItemsOnNextsByPrototype, nexts, inserted, nextsName)
+
+		if with and not inserted[with] then
 			table.insert(nexts, with)
 		end
 
@@ -291,11 +314,21 @@ do
 		if type(constructors) == "function" then
 			self.new = createFactory(prototype, constructors)
 		elseif type(constructors) == "table" then
-			const first = rawget(constructors, "__first")
-			rawset(constructors, "__first", nil)
-			const final = rawget(constructors, "__final")
-			rawset(constructors, "__final", nil)
+			local first = rawget(constructors, "__first")
+			if type(first) ~= "function" then
+				first = nil
+			end
+			local final = rawget(constructors, "__final")
+			if type(final) ~= "function" then
+				final = nil
+			end
 			for index, value in pairs(constructors) do
+				if index == "__first" then
+					continue
+				end
+				if index == "__final" then
+					continue
+				end
 				self[index] = if type(value) == "function" then createFactory(prototype, value, first, final) else value
 			end
 		else
