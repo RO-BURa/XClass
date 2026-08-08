@@ -218,4 +218,43 @@ do -- 다중상속
 	assert(object.d == 40, "다중상속 d 이상함")
 end
 
+do -- 다이아몬드 문제
+	local classAFired = 0
+	const classA = XClass.new(function(self)
+		classAFired += 1
+	end)
+	const classB = XClass.new(
+		function(self)
+			XClass.Super(self, classA)
+		end,
+		nil,
+		{
+			Extends = classA,
+		}
+	)
+	const classC = XClass.new(
+		function(self)
+			XClass.Super(self, classA)
+		end,
+		nil,
+		{
+			Extends = classA,
+		}
+	)
+	const classD = XClass.new(
+		function(self)
+			XClass.Super(self, classB)
+			XClass.Super(self, classC)
+		end,
+		nil,
+		{
+			Extends = { classB, classC },
+		}
+	)
+
+	classD.new()
+
+	assert(classAFired == 1, "classA의 Constructor가 여러번 호출됨")
+end
+
 return nil
